@@ -1,0 +1,22 @@
+
+# CLI tool, only in development environment.
+# https://goframe.org/pages/viewpage.action?pageId=3673173
+gfcli:
+  docker:
+    build: "-a amd64 -s linux -p temp -ew"
+    # build: "-f manifest/docker/docker-compose.yaml"
+    # tagPrefixes:
+    #   - my.image.pub/my-app
+
+  gen:
+    dao:
+    - link: "mysql:root:12345678@tcp(host.docker.internal:3307)/firstlinks"  # Docker
+      jsonCase: "Snake"                 # specify how entity convert to json
+      # prefix: "primary_"              # for different databases -> prevent tablename overlap
+      # tables: "Account"               # Only specified tables will be generated
+      entityPath: "model/test/entity"
+      # clear: true                     # clear current generated files
+      # fieldMapping:
+        # account.id:
+        #   type:   uuid.UUID
+        #   import: github.com/google/uuid

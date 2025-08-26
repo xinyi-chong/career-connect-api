@@ -1,0 +1,59 @@
+stages:
+  - build
+  - deploy
+
+before_script:
+  # Install necessary packages
+  - apk update && apk add openssh-client git  # Install SSH and Git
+
+build:
+  stage: build
+  image: docker:latest
+  script:
+    - echo "Building the application..."
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    # Install necessary packages
+    - apk update && apk add openssh-client git
+
+    # Decode the Base64-encoded private key and store it in the proper location
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | base64 -d > ~/.ssh/id_rsa  # Decode the key from Base64
+    - chmod 600 ~/.ssh/id_rsa  # Set correct permissions for the private key
+
+    # Start ssh-agent and add the decoded private key using the passphrase
+    - eval $(ssh-agent -s)
+    - echo "" | ssh-add ~/.ssh/id_rsa
+    
+    # Add GitLab host to known hosts 
+    - ssh-keyscan -H 84.247.143.133 >> ~/.ssh/known_hosts
+    - ssh-keyscan -H gitlab.fptech.dev >> ~/.ssh/known_hosts
+
+    - echo "Checking environment variables:"
+    - echo "GITLAB_ACCESS_TOKEN=${GITLAB_ACCESS_TOKEN}"
+
+
+  script:
+    # SSH into the production server, switch to the staging branch, pull the latest code, and deploy
+    - ssh root@84.247.143.133 '
+      export GITLAB_ACCESS_TOKEN='${GITLAB_ACCESS_TOKEN}' &&
+        echo "token:$GITLAB_ACCESS_TOKEN" &&
+        cd /home/backend/firstlinks &&
+        git config user.name "peterpoon" &&
+        git config user.password "$GITLAB_ACCESS_TOKEN" &&
+        git checkout staging && 
+        git pull https://peterpoon:$GITLAB_ACCESS_TOKEN@gitlab.fptech.dev/fptech-backend/firstlinks.git staging &&
+        cd manifest/docker &&
+        docker compose down &&
+        docker compose build &&
+        docker compose up -d
+      '
+  environment:
+    name: staging
+  only:
+    refs:
+      - staging
+

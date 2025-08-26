@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+  redis-master:
+    image: redis:latest
+    container_name: fl-redis-master
+    networks:
+      - redis-network
+    volumes:
+      - ./redis-config/redis-master.conf:/usr/local/etc/redis/redis.conf
+      - ./redis-config/users.acl:/usr/local/etc/redis/users.acl
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  redis-slave:
+    image: redis:latest
+    container_name: fl-redis-slave
+    networks:
+      - redis-network
+    volumes:
+      - ./redis-config/redis-slave.conf:/usr/local/etc/redis/redis.conf
+      - ./redis-config/users.acl:/usr/local/etc/redis/users.acl
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6381:6379"  # Expose slave for User 1 on a different port
+
+  mysql-db:
+    build:
+      context: ../../
+      dockerfile: manifest/docker/Dockerfile.mysql
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - public-network
+    ports:
+      - "3307:3306"
+    volumes:
+      # - ../../.env:/etc/environment
+      # - ./mysql/mysql-data:/var/lib/mysql # need to remove this dir before docker build
+      - ./mysql/initdb:/docker-entrypoint-initdb.d
+      - ./mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate
+    container_name: migrate_service
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      # DATABASE_URL: ${DATABASE_URL}
+    command: [
+      "-path", "/migrations", 
+      "-database", "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql-db:3306)/${MYSQL_DATABASE}?multiStatements=true", 
+      "up"
+    ]
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    networks:
+      - public-network
+    restart: on-failure
+
+  golang-api:
+    build:
+      context: ../../
+      dockerfile: manifest/docker/Dockerfile
+    container_name: fl-golang-api
+    ports:
+      - "8081:8080"
+    volumes:
+      - ../../log:/log
+    environment:
+      HOST: ${HOST}
+      SECRET: ${SECRET}
+      # DATABASE_URL: ${DATABASE_URL}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      API_URL: ${API_URL}
+      APP_URL: ${APP_URL}
+      SMTP_FROM: ${SMTP_FROM}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_BUCKET: ${AWS_BUCKET}
+      AWS_REGION: ${AWS_REGION}
+    networks:
+      - redis-network
+      - public-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      redis-master:
+        condition: service_started
+
+networks:
+  redis-network:
+    driver: bridge
+  public-network:
+    driver: bridge
