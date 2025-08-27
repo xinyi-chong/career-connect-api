@@ -1,6 +1,7 @@
 # career-connect-api
 
-A LinkedIn-style job application and networking platform.
+**Backend** for a LinkedIn-style job application and networking platform.  
+
 Built with Go (GoFrame), featuring secure authentication, job postings, applications, and scalable architecture with Docker & Redis.
 
 ## 📦 Tech Highlights
