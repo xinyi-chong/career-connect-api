@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  redis-master:
+    image: redis:latest
+    container_name: redis-master
+    networks:
+      - redis-network
+    volumes:
+      - ./redis-config/redis-master.conf:/usr/local/etc/redis/redis.conf
+      - ./redis-config/users.acl:/usr/local/etc/redis/users.acl
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+
+  redis-slave:
+    image: redis:latest
+    container_name: redis-slave
+    networks:
+      - redis-network
+    volumes:
+      - ./redis-config/redis-slave.conf:/usr/local/etc/redis/redis.conf
+      - ./redis-config/users.acl:/usr/local/etc/redis/users.acl
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    ports:
+      - "6381:6379"
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    networks:
+      - public-network
+    ports:
+      - "3307:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+      - ./mysql/initdb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate:latest
+    container_name: migrate_service
+    command: [
+      "-path", "/migrations",
+      "-database", "mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql-db:3306)/${MYSQL_DATABASE}?multiStatements=true",
+      "up"
+    ]
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    networks:
+      - public-network
+    restart: on-failure
+
+  golang-api:
+    build:
+      context: ../../
+      dockerfile: manifest/docker/Dockerfile
+    container_name: golang-api
+    env_file:
+      - .env
+    ports:
+      - "8081:8080"
+    volumes:
+      - ../../log:/log
+    networks:
+      - redis-network
+      - public-network
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+      redis-master:
+        condition: service_started
+
+networks:
+  redis-network:
+    driver: bridge
+  public-network:
+    driver: bridge

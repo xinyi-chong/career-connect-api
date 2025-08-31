@@ -1,0 +1,30 @@
+## App settings
+## https://pkg.go.dev/github.com/gogf/gf/v2/net/ghttp#ServerConfig
+server:
+  address: ":8080"
+  openapiPath: "/api.json"
+  swaggerPath: "/swagger"
+  logPath: "./logs/server"
+  sessionMaxAge: "15m"
+
+## Database (MySQL)
+## https://goframe.org/en/docs/core/gdb-config-file
+database:
+  default:
+    host: "mysql-db"
+    port: "3306"
+    user: "appuser"
+    pass: "apppassword"
+    name: "career_connect"
+    type: "mysql"
+    debug: true
+    maxIdle: 10
+    maxOpen: 100
+
+## Redis
+## https://goframe.org/en/docs/components/contrib-nosql-redis-config
+redis:
+  default:
+    address: "redis-master:6379"
+    db: 0
+    pass: ""

@@ -1,0 +1,27 @@
+DROP TABLE IF EXISTS `user_subscription`;
+DROP TABLE IF EXISTS `user_plan`;
+
+DROP TABLE IF EXISTS `suggest_skill`;
+DROP TABLE IF EXISTS `skill`;
+DROP TABLE IF EXISTS `schedule`;
+DROP TABLE IF EXISTS `application_chat_message`;
+DROP TABLE IF EXISTS `application_file`;
+DROP TABLE IF EXISTS `application`;
+DROP TABLE IF EXISTS `activity`;
+DROP TABLE IF EXISTS `permission`;
+DROP TABLE IF EXISTS `notification`;
+DROP TABLE IF EXISTS `job_question`;
+DROP TABLE IF EXISTS `job`;
+DROP TABLE IF EXISTS `feature`;
+DROP TABLE IF EXISTS `experience`;
+DROP TABLE IF EXISTS `education`;
+DROP TABLE IF EXISTS `company_subscription`;
+DROP TABLE IF EXISTS `company_plan`;
+DROP TABLE IF EXISTS `company_accounts`;
+DROP TABLE IF EXISTS `role`;
+DROP TABLE IF EXISTS `certificate`;
+DROP TABLE IF EXISTS `resume`;
+DROP TABLE IF EXISTS `company`;
+DROP TABLE IF EXISTS `user`;
+DROP TABLE IF EXISTS `media`;
+DROP TABLE IF EXISTS `account`;
